@@ -42,3 +42,53 @@ class Decoder(tf.keras.Model):
         f = tf.nn.sigmoid(self.l2(f))
         f = self.loutput(f)
         return f
+
+
+def compute_loss(models, data):
+    x, x_dot = data
+    encoder, decoder, sindy = models
+    ### LOSS 0 and 1 ###
+    with tf.GradientTape(persistent=True) as tape:
+        tape.watch(encoder.trainable_variables)
+        tape.watch(decoder.trainable_variables)
+        tape.watch(x)
+        tape.watch(tf.convert_to_tensor(sindy.coeffs))
+
+        z = encoder(x)
+        tape.watch(z)
+        x_quasi = decoder(z)
+
+        loss0 = tf.keras.losses.MSE(x,x_quasi)
+        zdot_sindy = sindy(tf.transpose(z))
+
+        with tape.stop_recording():
+            dpsi_dz = tf.squeeze(tape.jacobian(x_quasi, z))
+        xdot_pred = tf.matmul(zdot_sindy,dpsi_dz, transpose_b=True)
+        loss1 = tf.keras.losses.MSE(x_dot,xdot_pred)
+
+        ### LOSS 2 and 4 ###
+        with tape.stop_recording():
+            dphi_dx = tf.squeeze(tape.jacobian(z,x))
+        #tf.einsum('ij,j->i', dphi_dx, tf.squeeze(x_dot))
+        zdot_pred = tf.matmul(x_dot, dphi_dx, transpose_b=True)
+        encoder_output = np.squeeze(encoder(x))
+        loss2 = tf.cast(tf.keras.losses.MSE(zdot_pred, zdot_sindy),tf.float32)
+
+        with tape.stop_recording():
+            dphi_dx = tf.squeeze(tape.jacobian(z,x))
+        #tf.einsum('ij,j->i', dphi_dx, tf.squeeze(x_dot))
+        zdot_pred = tf.matmul(x_dot, dphi_dx, transpose_b=True)
+        loss3 = tf.cast(tf.keras.losses.MSE(zdot_pred, zdot_sindy),tf.float32)
+
+        loss4 = tf.expand_dims(tf.einsum('ij->',tf.math.abs(sindy.coeffs)),axis=0)
+        total_loss = loss0 + loss1 + loss2 + loss3 + loss4
+
+    grads_sindy_coeffs = tape.gradient(total_loss, sindy.coeffs)
+    grads_encoder = tape.gradient(total_loss, encoder.trainable_variables)
+    grads_decoder = tape.gradient(total_loss, decoder.trainable_variables)
+
+    gradients = [grads_encoder, grads_decoder, grads_sindy_coeffs]
+    for model, gradient in zip(models, gradients):
+        model.optimizer.apply_gradients(zip(gradient, model.trainable_variables))
+    losses = tf.stack([loss0,loss1,loss2,loss3,loss4])
+    return total_loss, losses

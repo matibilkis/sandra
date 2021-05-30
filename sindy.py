@@ -1,5 +1,28 @@
 import numpy as np
 import ast
+import tensorflow as tf
+
+
+class SINDy_tf():
+    def __init__(self):
+        self.coeffs = tf.ones((3,27))
+
+    def theta(self,z):
+        th = []
+        for i in range(3):
+            for j in range(3):
+                for k in range(3):
+                    th.append(tf.pow(z[0], i)*tf.pow(z[1], j)*tf.pow(z[2], k))
+        return tf.transpose(tf.stack(th,axis=0))
+
+    def __call__(self, phi_of_ex):
+        thetas = self.theta(phi_of_ex)
+        zdot_sindy = tf.einsum('ij,kj->ki',self.coeffs,thetas)
+        return zdot_sindy
+
+
+
+
 
 class SINDy():
     def __init__(self):
@@ -40,9 +63,11 @@ class SINDy():
         encoder_output: array of dimension 3 (for Lorenz case)
         zdot_comp: int <3. Is the component of the zdot (which determines the row of the SINDy coefficient matrix)
         """
-        sindy_coeffs, theta_values =np.zeros((2,27))
+        sindy_coeffs = []
+        theta_values = []
         for ind in range(27):
             index_sindys = tuple([zdot_comp]) + tuple(ast.literal_eval(self.index_to_list[ind]))
-            sindy_coeffs[ind] = self.sindy_coeffs[index_sindys]
-            theta_values[ind] = self.theta_fun(self.index_to_list[ind],encoder_output)
-        return np.dot(sindy_coeffs, theta_values)
+            sindy_coeffs.append(self.sindy_coeffs[index_sindys])
+            theta_values.append(self.theta_fun(self.index_to_list[ind],encoder_output))
+        return sindy_coeffs, theta_values
+        # return np.dot(sindy_coeffs, theta_values)

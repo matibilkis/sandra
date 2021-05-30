@@ -44,7 +44,13 @@ self.mask = tf.keras.layers.Masking(mask_value=pad_value,
 
 
 
-
+    for i in range(3):
+        for j in range(3):
+            for k in range(3):
+                lista=str([i,j,k])
+                list_to_index[lista]=ind
+                index_to_list[ind]=lista
+                ind+=1
 
 
 
@@ -94,3 +100,10 @@ zdot_pred = tf.matmul(x_dot, dphi_dx, transpose_b=True)
 loss3 = tf.cast(tf.keras.losses.MSE(zdot_pred, zdot_sindy),tf.float32)
 
 loss4 = tf.cast(tf.expand_dims(np.sum(tf.abs(sindy.sindy_coeffs)),axis=0),tf.float32)
+
+
+
+
+
+###
+tf.matmul(thetas,coeffs , transpose_b=True)
