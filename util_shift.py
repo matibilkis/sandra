@@ -40,7 +40,14 @@ self.mask = tf.keras.layers.Masking(mask_value=pad_value,
 
 
 
-
+class TotalLoss(tf.keras.losses.Loss):
+    """
+    this is a very simple loss that
+    """
+    def __init__(self, mode_var="vqe"):
+        super(TotalLoss,self).__init__()
+    def call(self, y_true, y_pred):
+        return
 
 
 
