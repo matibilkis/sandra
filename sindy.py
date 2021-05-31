@@ -11,6 +11,9 @@ class SINDy(tf.keras.Model):
         self.coeffs = tf.Variable(np.ones((3,27)).astype(np.float32))
 
     def theta(self,z):
+        """
+        z should be of dim (Batch_size, Nt, output(encoder))
+        """
         th = []
         for i in range(3):
             for j in range(3):

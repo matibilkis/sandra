@@ -8,7 +8,11 @@ some notes:
 
 
 class MetaModel(tf.keras.Model):
-    def __init__(self, models):
+    def __init__(self, models, bs,Nt, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3):
+        """
+        bs: batch_size
+        Nt: time series length
+        """
         super(MetaModel, self).__init__()
         self.encoder, self.decoder, self.sindy = models
         self.compile_models()
@@ -17,6 +21,15 @@ class MetaModel(tf.keras.Model):
         self.loss1 = Metrica(name="Loss_1")
         self.loss2 = Metrica(name="Loss_2")
         self.loss3 = Metrica(name="Loss_3")
+        self.bs = bs
+        self.Nt = Nt
+        self.p_param = p_param
+        self.d_param = d_param
+
+        ### regularizers
+        self.lambda1 = lambda1
+        self.lambda2 = lambda2
+        self.lambda3 = lambda3
 
     @property
     def metrics(self):
@@ -30,7 +43,6 @@ class MetaModel(tf.keras.Model):
     def train_step(self,data):
         #data = tf.random.uniform((2,bs,Nsteps,128))
         x, x_dot = data #tf.random.uniform((2,bs,Nsteps,128))
-        tf.print(x.shape)
 
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(self.encoder.trainable_variables)
@@ -48,10 +60,12 @@ class MetaModel(tf.keras.Model):
             zdot_SINDy = self.sindy(z)
             with tape.stop_recording():
                 dpsi_dz = tape.jacobian(x_quasi,z)
-            ones = tf.ones(dpsi_dz.shape)
+            # ones = tf.ones(dpsi_dz.shape)  (None, 40, 128, None, 40, 3)
+            ones = tf.ones((self.bs, self.Nt, 128, self.bs, self.Nt, 3)) # (None, 40, 128, None, 40, 3)
+
             dpsi_dz = tf.einsum('abcdef,yuidep->abcf',dpsi_dz, ones) ### most of those derivatives are zero, since they correspond to different batches!
             xdot_pred = tf.einsum('ntaj,ntj->nta',dpsi_dz,zdot_SINDy)
-            loss1 = tf.keras.losses.MSE(x_dot,xdot_pred)
+            loss1 = self.lambda1*tf.keras.losses.MSE(x_dot,xdot_pred)
 
             ### LOSS 2 ###
             with tape.stop_recording():
@@ -59,10 +73,10 @@ class MetaModel(tf.keras.Model):
             ones = tf.ones(dphi_dx.shape)
             dphi_dx = tf.einsum('abcdef,yuidep->abcf',dphi_dx, ones) ### most of those derivatives are zero, since they correspond to different batches!
             zdot_pred = tf.einsum('ntaj,ntj->nta',dphi_dx,x_dot)
-            loss2 = tf.cast(tf.keras.losses.MSE(zdot_pred, zdot_SINDy),tf.float32)
+            loss2 = self.lambda2*tf.cast(tf.keras.losses.MSE(zdot_pred, zdot_SINDy),tf.float32)
 
             ### LOSS 3 ###
-            loss3 = tf.expand_dims(tf.einsum('ij->',tf.math.abs(self.sindy.coeffs)),axis=0)
+            loss3 = self.lambda3*tf.expand_dims(tf.einsum('ij->',tf.math.abs(self.sindy.coeffs)),axis=0)/(self.p_param*self.d_param)
             total_loss = loss0 + loss1 + loss2 + loss3
 
 
