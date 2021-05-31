@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.integrate import odeint
 from scipy.special import legendre
+from tqdm import tqdm
 
 def generate_lorenz_fulldata(n_ics):
     """
@@ -28,7 +29,7 @@ def generate_lorenz_fulldata(n_ics):
 
     Z = np.zeros((n_ics,n_steps,d))
     dZ = np.zeros(Z.shape)
-    for i in range(n_ics):
+    for i in tqdm(range(n_ics)):
         Z[i], dZ[i]= simulate_lorenz(ics[i], t)
 
     n_points = 128
@@ -106,6 +107,10 @@ def legendre_polinomials(n_points):
 
     return modes
 
-
+if __name__ == '__main__':
+    import os
+    x, x_dot = generate_lorenz_fulldata(2048)
+    os.makedirs("datalorenz",exist_ok=True)
+    np.save("datalorenz/2048",[x,x_dot])
 # Test
 #X, dX = generate_lorenz_fulldata(2048)
