@@ -2,13 +2,15 @@ import tensorflow as tf
 
 """
 some notes:
-(SI) which are applied at all15layers of the network, except for the last layer of the encoder and the last layer of the decoder
+(from Supplementar Information) which are applied at all15layers of the network, except for the last layer of the encoder and the last layer of the decoder
+
+
+In all losses but the Loos0, you don't get gradients wrt decoder weigths... is this a bug? actually, in the paper they only compute wrt self.encoder: Can we give a reasonable explanation in terms of the chain rule? In terms of the "numerical part", the dependence is lost when you
+apply the "tape.stop_recording(), which in turn allows us to compute the batched_jacobian"
 """
 
-
-
 class MetaModel(tf.keras.Model):
-    def __init__(self, models, bs,Nt, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3):
+    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3):
         """
         bs: batch_size
         Nt: time series length
@@ -16,13 +18,12 @@ class MetaModel(tf.keras.Model):
         super(MetaModel, self).__init__()
         self.encoder, self.decoder, self.sindy = models
         self.compile_models()
-        self.total_loss = Metrica(name="energy")
+
+        self.total_loss = Metrica(name="Total Loss")
         self.loss0 = Metrica(name="Loss_0")
         self.loss1 = Metrica(name="Loss_1")
         self.loss2 = Metrica(name="Loss_2")
         self.loss3 = Metrica(name="Loss_3")
-        self.bs = bs
-        self.Nt = Nt
         self.p_param = p_param
         self.d_param = d_param
 
@@ -33,22 +34,29 @@ class MetaModel(tf.keras.Model):
 
     @property
     def metrics(self):
+        """
+        this helps monitring training
+        """
         return [self.total_loss, self.loss0, self.loss1,self.loss2,self.loss3]
 
     def compile_models(self):
+        """
+        this internally defines, for each model, an optimizer.
+        Importantly, you can access it through model.optimizer.
+        We use this to "apply_gradients" in the train_step method
+        """
         for model in [self.encoder, self.decoder, self.sindy]:
             model.compile(optimizer=tf.keras.optimizers.Adam(lr=1e-3))
-        self.compile(loss="mse",optimizer="sgd")
+        self.compile(loss="mse",optimizer="sgd") #this is required to use model.fit, in the MetaModel; but "sgd" and "mse" does not matter
 
     def train_step(self,data):
-        #data = tf.random.uniform((2,bs,Nsteps,128))
-        x, x_dot = data #tf.random.uniform((2,bs,Nsteps,128))
+        x, x_dot = data #DATA of shape (BS,128)
 
         with tf.GradientTape(persistent=True) as tape:
             tape.watch(self.encoder.trainable_variables)
             tape.watch(self.decoder.trainable_variables)
             tape.watch(x)
-            tape.watch(tf.convert_to_tensor(self.sindy.coeffs))
+            tape.watch(self.sindy.trainable_variables)
 
             ### LOSS 0###
             z = self.encoder(x)
@@ -57,23 +65,20 @@ class MetaModel(tf.keras.Model):
             loss0 = tf.keras.losses.MSE(x,x_quasi)
 
             ### LOSS 1 ###
-            zdot_SINDy = self.sindy(z)
             with tape.stop_recording():
-                dpsi_dz = tape.jacobian(x_quasi,z)
-            # ones = tf.ones(dpsi_dz.shape)  (None, 40, 128, None, 40, 3)
-            ones = tf.ones((self.bs, self.Nt, 128, self.bs, self.Nt, 3)) # (None, 40, 128, None, 40, 3)
+                dpsi_dz = tape.batch_jacobian(x_quasi,z) # (this has dimenison BATCH, 128, 3)
 
-            dpsi_dz = tf.einsum('abcdef,yuidep->abcf',dpsi_dz, ones) ### most of those derivatives are zero, since they correspond to different batches!
-            xdot_pred = tf.einsum('ntaj,ntj->nta',dpsi_dz,zdot_SINDy)
+
+            zdot_SINDy = self.sindy(z)
+            xdot_pred = tf.einsum('bxz,bz->bx',dpsi_dz,zdot_SINDy)
+
             loss1 = self.lambda1*tf.keras.losses.MSE(x_dot,xdot_pred)
 
             ### LOSS 2 ###
             with tape.stop_recording():
-                dphi_dx = tape.jacobian(z,x)
-            ones = tf.ones(dphi_dx.shape)
-            dphi_dx = tf.einsum('abcdef,yuidep->abcf',dphi_dx, ones) ### most of those derivatives are zero, since they correspond to different batches!
-            zdot_pred = tf.einsum('ntaj,ntj->nta',dphi_dx,x_dot)
-            loss2 = self.lambda2*tf.cast(tf.keras.losses.MSE(zdot_pred, zdot_SINDy),tf.float32)
+                dphi_dx = tape.batch_jacobian(z,x) #this has dimension BATCH, 3, 128
+            zdot_pred = tf.einsum('bjx,bx->bj',dphi_dx,x_dot)
+            loss2 = self.lambda2*tf.keras.losses.MSE(zdot_pred, zdot_SINDy)
 
             ### LOSS 3 ###
             loss3 = self.lambda3*tf.expand_dims(tf.einsum('ij->',tf.math.abs(self.sindy.coeffs)),axis=0)/(self.p_param*self.d_param)
@@ -100,6 +105,9 @@ class MetaModel(tf.keras.Model):
 
 
 class Metrica(tf.keras.metrics.Metric):
+    """
+    This helps to monitor training (for instance each loss)
+    """
     def __init__(self, name):
         super(Metrica, self).__init__()
         self._name=name
@@ -118,6 +126,7 @@ class Metrica(tf.keras.metrics.Metric):
 class Encoder(tf.keras.Model):
     def __init__(self, seed_val=0.1):
         """
+        Encoder network
         """
         super(Encoder,self).__init__()
         self.l1 = tf.keras.layers.Dense(64,kernel_initializer=tf.random_uniform_initializer(minval=-seed_val, maxval=seed_val),
@@ -138,6 +147,7 @@ class Encoder(tf.keras.Model):
 class Decoder(tf.keras.Model):
     def __init__(self, seed_val=0.1):
         """
+        Decoder network
         """
         super(Decoder,self).__init__()
         self.l1 = tf.keras.layers.Dense(32,kernel_initializer=tf.random_uniform_initializer(minval=-seed_val, maxval=seed_val),

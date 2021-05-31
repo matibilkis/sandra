@@ -3,31 +3,29 @@ import ast
 import tensorflow as tf
 
 
-
-
 class SINDy(tf.keras.Model):
     def __init__(self):
         super(SINDy,self).__init__()
-        self.coeffs = tf.Variable(np.ones((3,27)).astype(np.float32))
+        self.coeffs = tf.Variable(np.ones((3,27)).astype(np.float32)) 
 
     def theta(self,z):
         """
-        z should be of dim (Batch_size, Nt, output(encoder))
+        z should be of dim (Batch_size, output(encoder))
         """
         th = []
         for i in range(3):
             for j in range(3):
                 for k in range(3):
-                    th.append(tf.reduce_prod(tf.stack([tf.pow(z[:,:,0], i),tf.pow(z[:,:,1], j),tf.pow(z[:,:,2], k)]), axis=0))
-        return tf.transpose(tf.stack(th,axis=0), perm=[1,2,0]) #returns [Nbatch, Ntimestep, 27]
+                    th.append(tf.reduce_prod(tf.stack([tf.pow(z[:,0], i),tf.pow(z[:,1], j),tf.pow(z[:,2], k)]), axis=0))
+        return tf.transpose(tf.stack(th,axis=0), perm=[1,0]) #returns [Nbatch, 27]
 
     @property
     def trainable_variables(self):
-        return [self.coeffs]
+        return [self.coeffs] #the [] is important, otherwise it's not interpreted as tf.model.trainable_variables
 
     def __call__(self, phi_of_ex):
         thetas = self.theta(phi_of_ex)
-        zdot_sindy = tf.einsum('bte,ze->btz',thetas, self.coeffs)
+        zdot_sindy = tf.einsum('be,ze->bz',thetas, self.coeffs)
         return zdot_sindy
 
 
