@@ -1,4 +1,5 @@
 import tensorflow as tf
+from math import sqrt
 
 """
 some notes:
@@ -10,7 +11,7 @@ apply the "tape.stop_recording(), which in turn allows us to compute the batched
 """
 
 class MetaModel(tf.keras.Model):
-    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3, total_epochs=11000):
+    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3, total_epochs=11000, when_zero_lambda3=1000):
         """
         bs: batch_size
         Nt: time series length
@@ -20,6 +21,7 @@ class MetaModel(tf.keras.Model):
         self.compile_models()
 
         self.total_epochs = total_epochs
+        self.when_zero_lambda3 =  when_zero_lambda3
         self.total_loss = Metrica(name="Total Loss")
         self.loss0 = Metrica(name="Loss_0")
         self.loss1 = Metrica(name="Loss_1")
@@ -134,7 +136,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
         super(TrainingCallback, self).__init__()
 
     def on_epoch_begin(self, epoch, logs={}):
-        if (epoch <  self.model.total_epochs - 1e-3) and (self.model.total_epochs > 9*1e3):
+        if (epoch >  self.model.total_epochs - self.model.when_zero_lambda3) and (self.model.total_epochs > 9*1e3):
             self.model.lambda3 = 0
         elif epoch%500 == 1:
             x = self.model.sindy.coeffs
@@ -148,7 +150,7 @@ class Encoder(tf.keras.Model):
         Encoder network
         """
         super(Encoder,self).__init__()
-        alphaxavi = np.sqrt(6)/(128+3)
+        alphaxavi = sqrt(6)/(128+3)
         self.l1 = tf.keras.layers.Dense(64,kernel_initializer=tf.random_uniform_initializer(minval=-alphaxavi, maxval=alphaxavi),
                     bias_initializer = tf.keras.initializers.Zeros())
         self.l2 = tf.keras.layers.Dense(32,kernel_initializer=tf.random_uniform_initializer(minval=-alphaxavi, maxval=alphaxavi),
@@ -169,7 +171,7 @@ class Decoder(tf.keras.Model):
         Decoder network
         """
         super(Decoder,self).__init__()
-        alphaxavi = np.sqrt(6)/(3+128)
+        alphaxavi = sqrt(6)/(3+128)
         self.l1 = tf.keras.layers.Dense(32,kernel_initializer=tf.random_uniform_initializer(minval=-alphaxavi, maxval=alphaxavi),
                     bias_initializer = tf.keras.initializers.Zeros())
         self.l2 = tf.keras.layers.Dense(64,kernel_initializer=tf.random_uniform_initializer(minval=-alphaxavi, maxval=alphaxavi),

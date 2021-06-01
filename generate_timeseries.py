@@ -109,8 +109,9 @@ def legendre_polinomials(n_points):
 
 if __name__ == '__main__':
     import os
-    x, x_dot = generate_lorenz_fulldata(2048)
+    ntraj = 500
+    x, x_dot = generate_lorenz_fulldata(ntraj)
     os.makedirs("datalorenz",exist_ok=True)
-    np.save("datalorenz/2048",[x,x_dot])
+    np.save("datalorenz/{}".format(ntraj),[x,x_dot])
 # Test
 #X, dX = generate_lorenz_fulldata(2048)
