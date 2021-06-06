@@ -1,6 +1,5 @@
 import tensorflow as tf
 from math import sqrt
-
 """
 some notes:
 (from Supplementar Information) which are applied at all15layers of the network, except for the last layer of the encoder and the last layer of the decoder
@@ -11,17 +10,16 @@ apply the "tape.stop_recording(), which in turn allows us to compute the batched
 """
 
 class MetaModel(tf.keras.Model):
-    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3, total_epochs=11000, when_zero_lambda3=1000):
+    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3, total_epochs=11000):
         """
         bs: batch_size
         Nt: time series length
         """
         super(MetaModel, self).__init__()
         self.encoder, self.decoder, self.sindy = models
-        #self.compile_models()
+        self.compile_models()
 
         self.total_epochs = total_epochs
-        self.when_zero_lambda3 =  when_zero_lambda3
         self.total_loss = Metrica(name="Total Loss")
         self.loss0 = Metrica(name="Loss_0")
         self.loss1 = Metrica(name="Loss_1")
@@ -136,13 +134,11 @@ class TrainingCallback(tf.keras.callbacks.Callback):
         super(TrainingCallback, self).__init__()
 
     def on_epoch_begin(self, epoch, logs={}):
-        if (epoch >  self.model.total_epochs - self.model.when_zero_lambda3) and (self.model.total_epochs > 9*1e3):
+        if (epoch >  self.model.total_epochs - 1e-3) and (self.model.total_epochs > 9*1e3):
             self.model.lambda3 = 0
         elif epoch%500 == 1:
             x = self.model.sindy.coeffs
-            self.model.sindy.coeffs = tf.where( tf.abs(x) > 0.1, x, 0)
-            for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
-                model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/{}/".format(name))
+            self.model.sindy.coeffs = tf.where( x > 0.1, x, 0)
 
 
 
