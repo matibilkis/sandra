@@ -23,6 +23,10 @@ class SINDy(tf.keras.Model):
     def trainable_variables(self):
         return [self.coeffs] #the [] is important, otherwise it's not interpreted as tf.model.trainable_variables
 
+    @property
+    def weigths(self):
+        return [self.coeffs] #the [] is important, otherwise it's not interpreted as tf.model.trainable_variables
+
     def __call__(self, phi_of_ex):
         thetas = self.theta(phi_of_ex)
         zdot_sindy = tf.einsum('be,ze->bz',thetas, self.coeffs)

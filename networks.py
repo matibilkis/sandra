@@ -18,7 +18,7 @@ class MetaModel(tf.keras.Model):
         """
         super(MetaModel, self).__init__()
         self.encoder, self.decoder, self.sindy = models
-        self.compile_models()
+        #self.compile_models()
 
         self.total_epochs = total_epochs
         self.when_zero_lambda3 =  when_zero_lambda3
@@ -140,7 +140,9 @@ class TrainingCallback(tf.keras.callbacks.Callback):
             self.model.lambda3 = 0
         elif epoch%500 == 1:
             x = self.model.sindy.coeffs
-            self.model.sindy.coeffs = tf.where( x > 0.1, x, 0)
+            self.model.sindy.coeffs = tf.where( tf.abs(x) > 0.1, x, 0)
+            for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
+                model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/{}/".format(name))
 
 
 
