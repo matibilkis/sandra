@@ -136,14 +136,16 @@ class TrainingCallback(tf.keras.callbacks.Callback):
         super(TrainingCallback, self).__init__()
 
     def on_epoch_begin(self, epoch, logs={}):
-        if (epoch >  self.model.total_epochs - self.model.when_zero_lambda3) and (self.model.total_epochs > 9*1e3):
-            self.model.lambda3 = 0
-        elif epoch%500 == 1:
-            x = self.model.sindy.coeffs
-            self.model.sindy.coeffs = tf.where( tf.abs(x) > 0.1, x, 0)
-            for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
-                model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/{}/".format(name))
-
+        # if (epoch >  self.model.total_epochs - self.model.when_zero_lambda3) and (self.model.total_epochs > 9*1e3):
+        #     self.model.lambda3 = 0
+        x = self.model.sindy.coeffs
+        self.model.sindy.coeffs = tf.where( tf.abs(x) > 0.1, x, 0)
+        for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
+    #        model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/{}/".format(name))
+            model.save_weights("nets/{}_{}/".format(name, epoch))
+        # print(self.model.sindy.weights)
+        # print(self.model.sindy.coeffs)
+        # print("****")
 
 
 class Encoder(tf.keras.Model):
