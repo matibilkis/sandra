@@ -143,7 +143,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
             self.model.sindy.coeffs = tf.where( tf.abs(x) > 0.1, x, 0)
             for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
                 model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/{}/".format(name))
-
+            print(self.model.sindy.coeffs)
 
 
 class Encoder(tf.keras.Model):
