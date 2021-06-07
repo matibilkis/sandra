@@ -30,5 +30,5 @@ for runni in range(10):
     metamodel.compile_models()
     with tf.device("GPU:0"):
         history = metamodel.fit(x=x, y=x_dot, epochs=metamodel.total_epochs, batch_size=8000,
-                        callbacks=[TrainingCallback(), tf.keras.callbacks.TensorBoard("logs/{}/".format(runni)),
+                        callbacks=[TrainingCallback(), tf.keras.callbacks.TensorBoard("/data/uab-giq/scratch/matias/sandra/logs/{}/".format(runni)),
                                       ])

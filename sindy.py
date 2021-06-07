@@ -6,8 +6,8 @@ import tensorflow as tf
 class SINDy(tf.keras.Model):
     def __init__(self):
         super(SINDy,self).__init__()
-        #self.coeffs = tf.Variable(np.ones((3,27)).astype(np.float32), trainable=True, name="{}/dense/kernel:0".format(self.name))
-        self.coeffs = tf.Variable(np.random.randn(3,27).astype(np.float32), trainable=True, name="{}/dense/kernel:0".format(self.name))
+        self.coeffs = tf.Variable(np.ones((3,27)).astype(np.float32), trainable=True, name="{}/dense/kernel:0".format(self.name))
+        #self.coeffs = tf.Variable(np.random.randn(3,27).astype(np.float32), trainable=True, name="{}/dense/kernel:0".format(self.name))
 
     def theta(self,z):
         """
