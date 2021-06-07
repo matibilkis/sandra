@@ -11,15 +11,17 @@ apply the "tape.stop_recording(), which in turn allows us to compute the batched
 """
 
 class MetaModel(tf.keras.Model):
-    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3, total_epochs=11000, when_zero_lambda3=1000):
+    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3, total_epochs=11000, when_zero_lambda3=1000,namerun="0"):
         """
         bs: batch_size
         Nt: time series length
         """
         super(MetaModel, self).__init__()
+        
+        self.namerun=namerun
         self.encoder, self.decoder, self.sindy = models
         #self.compile_models()
-
+        
         self.total_epochs = total_epochs
         self.when_zero_lambda3 =  when_zero_lambda3
         self.total_loss = Metrica(name="Total Loss")
@@ -143,7 +145,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
             if epoch>500:
                 self.model.sindy.coeffs = tf.where( tf.abs(x) > 0.1, x, 0)
             for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
-                model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/{}_{}/".format(name,epoch))
+                model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/run{}/{}_{}/".format(self.model.namerun,name,epoch))
 
 
 class Encoder(tf.keras.Model):
