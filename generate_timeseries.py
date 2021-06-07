@@ -187,7 +187,7 @@ def generate_lorenz_data(ics, t, n_points, linear=True, normalization=None,
     return data
 if __name__ == '__main__':
     import os
-    ntraj = 2048
+    ntraj = 500
     data = get_lorenz_data(ntraj, noise_strength=0)
     x, x_dot = data['x'], data['dx']
     os.makedirs("datalorenz",exist_ok=True)
