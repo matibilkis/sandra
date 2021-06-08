@@ -26,7 +26,7 @@ for runni in range(10):
     sindy = SINDy()
     models = [encoder, decoder, sindy]
 
-    metamodel = MetaModel(models, total_epochs=int(1e4+1e3), when_zero_lambda3=1000,namerun=runni)
+    metamodel = MetaModel(models, total_epochs=int(1e4+1e3+1), when_zero_lambda3=1000,namerun=runni)
     metamodel.compile_models()
     with tf.device("GPU:0"):
         history = metamodel.fit(x=x, y=x_dot, epochs=metamodel.total_epochs, batch_size=8000,

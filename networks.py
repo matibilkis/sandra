@@ -11,7 +11,8 @@ apply the "tape.stop_recording(), which in turn allows us to compute the batched
 """
 
 class MetaModel(tf.keras.Model):
-    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3, total_epochs=11000, when_zero_lambda3=1000,namerun="0"):
+    def __init__(self, models, lambda1=1e-4, lambda2=0,lambda3=1e-5, p_param=27, d_param=3,
+                 total_epochs=11000, when_zero_lambda3=1000,namerun="0",retraining=True, from_epoch=0):
         """
         bs: batch_size
         Nt: time series length
@@ -20,6 +21,9 @@ class MetaModel(tf.keras.Model):
         
         self.namerun=namerun
         self.encoder, self.decoder, self.sindy = models
+        
+        self.from_epoch=from_epoch
+        self.retraining=retraining
         #self.compile_models()
         
         self.total_epochs = total_epochs
@@ -141,12 +145,12 @@ class TrainingCallback(tf.keras.callbacks.Callback):
         if (epoch >  self.model.total_epochs - self.model.when_zero_lambda3) and (self.model.total_epochs > 9*1e3):
             self.model.lambda3 = 0
         elif epoch%500 == 0:            
-            if epoch>=500:
+            if (epoch>=500) and (epoch<=1e4):
                 x=self.model.sindy.get_weights()[0]
-                y = np.where(np.abs(x)>0.1,x,0).astype(np.float32)
+                y = tf.where(tf.abs(x)>0.1,x,0)
                 self.model.sindy.set_weights([y])
             for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
-                model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/run{}/{}_{}/".format(self.model.namerun,name,epoch))
+                model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/run{}/{}_{}/".format(self.model.namerun,name,epoch+self.model.from_epoch))
 
 
 class Encoder(tf.keras.Model):
