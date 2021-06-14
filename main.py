@@ -11,7 +11,7 @@ x = tf.reshape(x,[-1,128])
 x_dot = tf.reshape(x,[-1,128])
     
     
-for runni in range(1,3):
+for runni in range(10):
     if runni>0:
         indices = tf.range(start=0, limit=tf.shape(x)[0], dtype=tf.int32)
         idx = tf.random.shuffle(indices)
