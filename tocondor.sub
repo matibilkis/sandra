@@ -1,0 +1,11 @@
+executable=subash.sh
+args=$(Item)
+output = ../jobs/sandra_$(Item).out
+error = ../jobs/sandra_$(Item).err
+log = ../jobs/sandra_$(Item).log
+request_memory = 8 GB
+request_cpus = 1
+requirements= Has_avx == true
+request_gpus = 1
++flavour="workday"
+queue from seq 1 1 1|

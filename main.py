@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 from networks import Encoder, Decoder, MetaModel, TrainingCallback
 import numpy as np
@@ -12,7 +11,7 @@ x = tf.reshape(x,[-1,128])
 x_dot = tf.reshape(x,[-1,128])
     
     
-for runni in range(10):
+for runni in range(1,3):
     if runni>0:
         indices = tf.range(start=0, limit=tf.shape(x)[0], dtype=tf.int32)
         idx = tf.random.shuffle(indices)
@@ -24,9 +23,14 @@ for runni in range(10):
     encoder = Encoder()
     decoder = Decoder()
     sindy = SINDy()
+    
+    ## build (important for saving the model)
+    encoder.build((None,128))
+    decoder.build((None,3))
+    
     models = [encoder, decoder, sindy]
 
-    metamodel = MetaModel(models, total_epochs=int(1e4+1e3+1), when_zero_lambda3=1000,namerun=runni)
+    metamodel = MetaModel(models, total_epochs=11001, when_zero_lambda3=1000,namerun=runni)
     metamodel.compile_models()
     with tf.device("GPU:0"):
         history = metamodel.fit(x=x, y=x_dot, epochs=metamodel.total_epochs, batch_size=8000,

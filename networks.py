@@ -1,5 +1,6 @@
 import tensorflow as tf
 from math import sqrt
+import numpy as np
 
 """
 some notes:
@@ -144,15 +145,31 @@ class TrainingCallback(tf.keras.callbacks.Callback):
     def on_epoch_begin(self, epoch, logs={}):
         if (epoch >  self.model.total_epochs - self.model.when_zero_lambda3) and (self.model.total_epochs > 9*1e3):
             self.model.lambda3 = 0
-        elif epoch%500 == 0:            
-            if (epoch>=500) and (epoch<=1e4):
-                x=self.model.sindy.get_weights()[0]
-                y = tf.where(tf.abs(x)>0.1,x,0)
-                self.model.sindy.set_weights([y])
+            
+        if (epoch%500) and (epoch<=1e4):
+            x=self.model.sindy.get_weights()[0]
+            y = tf.where(tf.abs(x)>0.1,x,0)
+            self.model.sindy.set_weights([y])
+            
             for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
-                model.save_weights("/data/uab-giq/scratch/matias/sandra/networks/run{}/{}_{}/".format(self.model.namerun,name,epoch+self.model.from_epoch))
+                dire = "/data/uab-giq/scratch/matias/sandra/networks/run{}/{}_{}/".format(self.model.namerun,name,epoch+self.model.from_epoch)
+                if name != "sindy":
+                    model.save(dire,include_optimizer=False)
+                else:
+                    model.save_weights(dire)
+                    np.save(dire+"_optimizer_weights", model.optimizer.get_weights()[1:], allow_pickle=True)
 
-
+        elif (epoch> 1e4) and (epoch%50):
+            for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
+                dire = "/data/uab-giq/scratch/matias/sandra/networks/run{}/{}_{}/".format(self.model.namerun,name,epoch+self.model.from_epoch)
+                if name != "sindy":
+                    model.save(dire,include_optimizer=False)
+                else:
+                    model.save_weights(dire)
+                    np.save(dire+"_optimizer_weights", model.optimizer.get_weights()[1:], allow_pickle=True)
+                    
+                    
+                    
 class Encoder(tf.keras.Model):
     def __init__(self, seed_val=0.1):
         """
