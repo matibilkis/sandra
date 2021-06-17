@@ -146,7 +146,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
         if (epoch >  self.model.total_epochs - self.model.when_zero_lambda3) and (self.model.total_epochs > 9*1e3):
             self.model.lambda3 = 0
             
-        if (epoch%500) and (epoch<=1e4):
+        if (epoch%500==1) and (epoch<=1e4):
             x=self.model.sindy.get_weights()[0]
             y = tf.where(tf.abs(x)>0.1,x,0)
             self.model.sindy.set_weights([y])
@@ -159,7 +159,7 @@ class TrainingCallback(tf.keras.callbacks.Callback):
                     model.save_weights(dire)
                     np.save(dire+"_optimizer_weights", model.optimizer.get_weights()[1:], allow_pickle=True)
 
-        elif (epoch> 1e4) and (epoch%50):
+        if (epoch> 1e4) and (epoch%50==0):
             for name, model in zip(["encoder","decoder","sindy"],[self.model.encoder, self.model.decoder, self.model.sindy]):
                 dire = "/data/uab-giq/scratch/matias/sandra/networks/run{}/{}_{}/".format(self.model.namerun,name,epoch+self.model.from_epoch)
                 if name != "sindy":
